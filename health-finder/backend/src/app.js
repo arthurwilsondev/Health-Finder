@@ -10,6 +10,9 @@ import cors from 'cors';
 
 import Login from "./login.js";
 import Usuario from "./usuario.js"
+import Hospital from "./hospital.js";
+import Atendimento from "./atendimentoCategoria.js";
+import AtendimentoCategoria from "./atendimentoCategoria.js";
 
 const app = express();
 
@@ -49,11 +52,6 @@ const specs = swaggerJsdoc(options);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-
 const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -67,6 +65,8 @@ const db = mysql.createPool({
 
 Login(app, db);
 Usuario(app,db);
+Hospital(app, db);
+AtendimentoCategoria(app, db);
 
 /**
  * @openapi
