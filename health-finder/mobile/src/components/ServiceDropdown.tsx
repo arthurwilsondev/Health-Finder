@@ -7,26 +7,39 @@ export type ServiceDropdownProps = {
   options: string[];
   onToggle: () => void;
   onSelect: (value: string) => void;
+  selectedValue?: string;
 };
 
-export function ServiceDropdown({ open, options, onToggle, onSelect }: ServiceDropdownProps) {
+export function ServiceDropdown({
+  open,
+  options,
+  onToggle,
+  onSelect,
+  selectedValue,
+}: ServiceDropdownProps) {
   return (
     <View style={styles.host}>
       <Pressable style={styles.button} onPress={onToggle}>
         <Text style={styles.buttonText} numberOfLines={1}>
-          Buscar diferentes atendimentos
+          {selectedValue || 'Buscar tipos de atendimento'}
         </Text>
         <Ionicons name={open ? 'caret-up' : 'caret-down'} size={22} color={colors.textDark} />
       </Pressable>
 
       {open && (
         <View style={styles.menu}>
-          {options.map((option, index) => (
-            <Pressable key={option} onPress={() => onSelect(option)} style={styles.option}>
-              <Text style={styles.optionText} numberOfLines={1}>{option}</Text>
-              {index < options.length - 1 && <View style={styles.divider} />}
-            </Pressable>
-          ))}
+          {options.length === 0 ? (
+            <View style={styles.option}>
+              <Text style={styles.optionText}>Nenhuma categoria carregada</Text>
+            </View>
+          ) : (
+            options.map((option, index) => (
+              <Pressable key={option} onPress={() => onSelect(option)} style={styles.option}>
+                <Text style={styles.optionText} numberOfLines={2}>{option}</Text>
+                {index < options.length - 1 && <View style={styles.divider} />}
+              </Pressable>
+            ))
+          )}
         </View>
       )}
     </View>
@@ -37,14 +50,15 @@ const styles = StyleSheet.create({
   host: {
     position: 'relative',
     zIndex: 20,
-    width: '80%',
+    width: '90%',
     alignSelf: 'center',
   },
   button: {
-    height: 48,
+    minHeight: 48,
     borderRadius: 8,
     backgroundColor: colors.primary,
     paddingHorizontal: 15,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -73,12 +87,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 8,
+    paddingVertical: 7,
   },
   optionText: {
     color: colors.white,
     fontFamily,
     fontWeight: '800',
-    fontSize: 18,
+    fontSize: 15,
     textAlign: 'center',
   },
   divider: {
@@ -86,7 +101,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 10,
     right: 10,
-    height: 3,
+    height: 2,
     borderRadius: 999,
     backgroundColor: colors.divider,
   },

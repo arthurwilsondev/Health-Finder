@@ -1,4 +1,3 @@
-
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
@@ -93,7 +92,6 @@ export default function Login(app, db) {
                 mensagem: "E-mail ou senha inválidos"
             });
         }
-        console.log("SECRET NO LOGIN:", process.env.JWT_SECRET);
 
         const token = jwt.sign(
             {
@@ -105,7 +103,6 @@ export default function Login(app, db) {
                 expiresIn: "1h"
             }
         );
-        console.log("TOKEN GERADO:", token);
 
 
         return res.json({

@@ -83,10 +83,10 @@ AtendimentoCategoria(app, db);
  *           text/plain:
  *             schema:
  *               type: string
- *               example: Curso de DM Fundatec
+ *               example: Curso de TI da Fundatec
  */
 app.get("/",(req,res) => {
-  res.status(200).send("Curso DM Fundatec");
+  res.status(200).send("Curso de TI Fundatec");
 });
 
 

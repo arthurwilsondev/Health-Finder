@@ -1,7 +1,11 @@
 import { StyleSheet, View } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import { colors } from '../constants/theme';
-import { hospitals } from '../mocks/hospitals';
+import type { Hospital } from '../types/hospital';
+
+type Props = {
+  hospitals: Hospital[];
+};
 
 const darkMapStyle = [
   { elementType: 'geometry', stylers: [{ color: '#14273c' }] },
@@ -13,50 +17,54 @@ const darkMapStyle = [
   { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#193148' }] },
 ];
 
-const userPoint = {
-  latitude: -30.0708,
-  longitude: -51.1876,
-};
+export function HospitalMap({ hospitals }: Props) {
+  const mappedHospitals = hospitals.filter(
+    (hospital) =>
+      typeof hospital.latitude === 'number' &&
+      typeof hospital.longitude === 'number'
+  );
 
-export function HospitalMap() {
+  const firstHospital = mappedHospitals[0];
+  const initialRegion = firstHospital
+    ? {
+        latitude: firstHospital.latitude!,
+        longitude: firstHospital.longitude!,
+        latitudeDelta: 0.06,
+        longitudeDelta: 0.06,
+      }
+    : {
+        // Apenas enquadramento inicial da câmera; não representa um hospital fictício.
+        latitude: -30.055,
+        longitude: -51.183,
+        latitudeDelta: 0.06,
+        longitudeDelta: 0.06,
+      };
+
   return (
     <View style={styles.wrapper}>
       <MapView
+        key={firstHospital?.id ?? 'empty-hospital-map'}
         style={StyleSheet.absoluteFill}
         customMapStyle={darkMapStyle}
-        initialRegion={{
-          latitude: -30.055,
-          longitude: -51.183,
-          latitudeDelta: 0.06,
-          longitudeDelta: 0.06,
-        }}
+        initialRegion={initialRegion}
         toolbarEnabled={false}
         rotateEnabled={false}
-        scrollEnabled={false}
-        zoomEnabled={false}
+        scrollEnabled
+        zoomEnabled
         pitchEnabled={false}
       >
-        {hospitals.map((hospital) => (
+        {mappedHospitals.map((hospital) => (
           <Marker
             key={hospital.id}
-            coordinate={{ latitude: hospital.latitude, longitude: hospital.longitude }}
+            coordinate={{
+              latitude: hospital.latitude!,
+              longitude: hospital.longitude!,
+            }}
             title={hospital.name}
+            description={hospital.address}
             pinColor="#E44B3C"
           />
         ))}
-
-        <Marker coordinate={userPoint} pinColor={colors.primary} title="Sua localização" />
-
-        <Polyline
-          coordinates={[
-            userPoint,
-            { latitude: -30.064, longitude: -51.182 },
-            { latitude: -30.061, longitude: -51.176 },
-            { latitude: hospitals[0].latitude, longitude: hospitals[0].longitude },
-          ]}
-          strokeColor={colors.primary}
-          strokeWidth={5}
-        />
       </MapView>
     </View>
   );

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocalSearchParams } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/AppHeader';
 import { HospitalMap } from '../components/HospitalMap';
 import { colors, fontFamily } from '../constants/theme';
+import type { Hospital } from '../types/hospital';
 
 function formatElapsed(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
@@ -12,6 +14,11 @@ function formatElapsed(totalSeconds: number) {
 }
 
 export default function TimerScreen() {
+  const { hospitalName, latitude, longitude } = useLocalSearchParams<{
+    hospitalName?: string;
+    latitude?: string;
+    longitude?: string;
+  }>();
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
 
@@ -22,6 +29,22 @@ export default function TimerScreen() {
   }, [running]);
 
   const timer = useMemo(() => formatElapsed(elapsed), [elapsed]);
+  const selectedHospital = hospitalName || 'hospital selecionado';
+
+  const mapHospitals = useMemo<Hospital[]>(() => {
+    if (!hospitalName || !latitude || !longitude) return [];
+    const lat = Number(latitude);
+    const lon = Number(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return [];
+
+    return [{
+      id: 'selected-hospital',
+      name: hospitalName,
+      address: '',
+      latitude: lat,
+      longitude: lon,
+    }];
+  }, [hospitalName, latitude, longitude]);
 
   const panelStyle = running ? styles.panelRunning : styles.panelIdle;
   const buttonStyle = running ? styles.buttonRunning : styles.buttonIdle;
@@ -31,16 +54,18 @@ export default function TimerScreen() {
       <AppHeader />
 
       <View style={styles.content}>
-        <HospitalMap />
+        <HospitalMap hospitals={mapHospitals} />
 
         <View style={[styles.panel, panelStyle]}>
           <Text style={styles.title}>
-            {running ? 'Finalizar cronometro' : 'Iniciar cronometro'}{`\n`}
-            da consulta em{`\n`}
-            Hospital São Lucas
+            {running ? 'Finalizar cronômetro' : 'Iniciar cronômetro'}{'\n'}
+            da consulta em{'\n'}
+            {selectedHospital}
           </Text>
 
-          <Text style={styles.helper}>Isso nos ajuda a manter{`\n`}nosso aplicativo preciso</Text>
+          <Text style={styles.helper}>
+            O cronômetro mede o tempo a partir do momento em que você iniciar.
+          </Text>
 
           <Pressable
             style={[styles.actionButton, buttonStyle]}
@@ -49,7 +74,7 @@ export default function TimerScreen() {
             <Text style={styles.actionText}>{running ? 'Finalizar' : 'Iniciar'}</Text>
           </Pressable>
 
-          <Text style={styles.description}>Sua consulta está demorando cerca de:</Text>
+          <Text style={styles.description}>Tempo registrado nesta sessão:</Text>
           <Text style={styles.timer}>{timer}</Text>
         </View>
       </View>
@@ -59,31 +84,39 @@ export default function TimerScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background, paddingTop: 8 },
-  content: { paddingHorizontal: 40, gap: 30, paddingTop: 12 },
+  content: { flex: 1, paddingHorizontal: 24, gap: 20, paddingTop: 12, paddingBottom: 20 },
   panel: {
-    minHeight: 515,
+    flex: 1,
+    minHeight: 400,
     borderWidth: 5,
     borderRadius: 17,
     alignItems: 'center',
-    paddingHorizontal: 25,
-    paddingTop: 28,
-    paddingBottom: 28,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 24,
   },
   panelIdle: { backgroundColor: colors.surface, borderColor: colors.primary },
   panelRunning: { backgroundColor: colors.dangerSurface, borderColor: colors.danger },
   title: {
     color: colors.white,
     fontFamily,
-    fontSize: 28,
-    lineHeight: 41,
+    fontSize: 22,
+    lineHeight: 32,
     fontWeight: '800',
     textAlign: 'center',
   },
-  helper: { marginTop: 28, color: colors.white, fontFamily, fontSize: 15, lineHeight: 22, textAlign: 'center' },
+  helper: {
+    marginTop: 20,
+    color: colors.white,
+    fontFamily,
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+  },
   actionButton: {
-    width: 220,
-    height: 94,
-    marginTop: 28,
+    width: 210,
+    minHeight: 76,
+    marginTop: 26,
     borderWidth: 3,
     borderColor: colors.white,
     borderRadius: 10,
@@ -92,7 +125,7 @@ const styles = StyleSheet.create({
   },
   buttonIdle: { backgroundColor: colors.primary },
   buttonRunning: { backgroundColor: colors.danger },
-  actionText: { color: colors.white, fontFamily, fontSize: 24, fontWeight: '800' },
-  description: { marginTop: 34, color: colors.white, fontFamily, fontSize: 15, textAlign: 'center' },
-  timer: { marginTop: 36, color: colors.white, fontFamily, fontSize: 38, fontWeight: '800' },
+  actionText: { color: colors.white, fontFamily, fontSize: 23, fontWeight: '800' },
+  description: { marginTop: 24, color: colors.white, fontFamily, fontSize: 14, textAlign: 'center' },
+  timer: { marginTop: 20, color: colors.white, fontFamily, fontSize: 38, fontWeight: '800' },
 });

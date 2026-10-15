@@ -19,10 +19,8 @@ export default function autenticarToken(req, res, next) {
             erro: "Formato do token inválido"
         });
     }
-    console.log("SECRET NA AUTENTICACAO:", process.env.JWT_SECRET);
 
     const token = partes[1];
-    console.log("TOKEN RECEBIDO:", token);
 
     try {
         const decoded = jwt.verify(
@@ -36,7 +34,6 @@ export default function autenticarToken(req, res, next) {
 
     } catch (error) {
         console.error("Erro JWT:", error.name);
-        console.error("Mensagem:", error.message);
 
         return res.status(403).json({
             erro: "Token inválido"
