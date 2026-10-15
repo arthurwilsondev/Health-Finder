@@ -68,8 +68,9 @@ function numberValue(value: unknown): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-export async function getHospitals(): Promise<Hospital[]> {
-  const result = await request<unknown>('/hospital');
+export async function getHospitals(categoriaId?: string): Promise<Hospital[]> {
+  const query = categoriaId ? `?categoriaId=${encodeURIComponent(categoriaId)}` : '';
+  const result = await request<unknown>(`/hospital${query}`);
 
   if (!Array.isArray(result)) {
     throw new Error('A API /hospital não retornou uma lista válida.');
@@ -78,7 +79,17 @@ export async function getHospitals(): Promise<Hospital[]> {
   return result.map((item, index) => {
     const row = asRecord(item);
     const name = stringValue(row.nome ?? row.name, `Hospital ${index + 1}`);
+    const rawLatitude = numberValue(row.latitude);
+    const rawLongitude = numberValue(row.longitude);
+    const coordinatesAreValid =
+      rawLatitude !== undefined &&
+      rawLongitude !== undefined &&
+      !(rawLatitude === 0 && rawLongitude === 0) &&
+      rawLatitude >= -90 && rawLatitude <= 90 &&
+      rawLongitude >= -180 && rawLongitude <= 180;
 
+    // Coordenadas (0, 0) são usadas com frequência como placeholder em registros
+    // ainda não georreferenciados; não devem virar marcadores na costa da África.
     return {
       id: stringValue(
         row.id_hospital ?? row.idHospital ?? row.hospital_id ?? row.id,
@@ -87,8 +98,8 @@ export async function getHospitals(): Promise<Hospital[]> {
       name,
       address: stringValue(row.endereco ?? row.address, 'Endereço não informado'),
       altitude: numberValue(row.altitude),
-      latitude: numberValue(row.latitude),
-      longitude: numberValue(row.longitude),
+      latitude: coordinatesAreValid ? rawLatitude : undefined,
+      longitude: coordinatesAreValid ? rawLongitude : undefined,
     };
   });
 }

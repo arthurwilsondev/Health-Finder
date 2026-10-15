@@ -31,13 +31,37 @@ export default function Hospital(app, db) {
 
     router.get("/hospital", async (req, res) => {
         try {
-            const sql = 'SELECT * FROM hospital';
-            const [rows] = await db.query(sql);
+            const categoriaId = req.query.categoriaId;
 
-            res.status(200).json(rows);
+            if (categoriaId !== undefined) {
+                const id = String(categoriaId);
+                if (!/^\d+$/.test(id) || Number(id) < 1) {
+                    return res.status(400).json({
+                        erro: "O parâmetro categoriaId deve ser um ID numérico positivo."
+                    });
+                }
+
+                // Esta consulta depende da tabela criada em:
+                // backend/sql/02-hospital-atendimento-categoria.sql
+                const sql = `
+                    SELECT h.*
+                    FROM hospital h
+                    INNER JOIN hospital_atendimento_categoria hac
+                        ON hac.hospital_id = h.id
+                    WHERE hac.categoria_id = ?
+                    ORDER BY h.nome
+                `;
+                const [rows] = await db.query(sql, [Number(id)]);
+                return res.status(200).json(rows);
+            }
+
+            const [rows] = await db.query('SELECT * FROM hospital ORDER BY nome');
+            return res.status(200).json(rows);
         } catch (error) {
-            console.error(error);
-            res.status(500).json({ error: 'Erro na consulta ao banco' });
+            console.error("Erro ao consultar hospitais:", error);
+            res.status(500).json({
+                error: "Erro na consulta ao banco. Verifique a conexão e, ao filtrar, a tabela hospital_atendimento_categoria."
+            });
         }
     });
 

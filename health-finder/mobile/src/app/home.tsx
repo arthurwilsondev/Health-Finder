@@ -28,7 +28,7 @@ export default function HomeScreen() {
       setCategoryError('');
 
       const [hospitalResult, categoryResult] = await Promise.allSettled([
-        getHospitals(),
+        getHospitals(selectedService?.id),
         getServiceCategories(),
       ]);
 
@@ -64,7 +64,7 @@ export default function HomeScreen() {
     return () => {
       active = false;
     };
-  }, [reloadKey]);
+  }, [reloadKey, selectedService?.id]);
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -81,10 +81,14 @@ export default function HomeScreen() {
         <ServiceDropdown
           open={open}
           selectedValue={selectedService?.name}
-          options={serviceTypes.map((service) => service.name)}
+          options={['Todos os hospitais', ...serviceTypes.map((service) => service.name)]}
           onToggle={() => setOpen((value) => !value)}
           onSelect={(name) => {
-            setSelectedService(serviceTypes.find((service) => service.name === name));
+            setSelectedService(
+              name === 'Todos os hospitais'
+                ? undefined
+                : serviceTypes.find((service) => service.name === name)
+            );
             setOpen(false);
           }}
         />
@@ -95,8 +99,7 @@ export default function HomeScreen() {
 
         {selectedService && (
           <Text style={styles.info}>
-            Tipo selecionado: {selectedService.name}. A API atual ainda não informa quais
-            hospitais oferecem cada tipo de atendimento, então a lista abaixo não é filtrada.
+            Mostrando hospitais associados a: {selectedService.name}.
           </Text>
         )}
 
@@ -114,7 +117,11 @@ export default function HomeScreen() {
             </Pressable>
           </View>
         ) : hospitals.length === 0 ? (
-          <Text style={styles.status}>Nenhum hospital foi cadastrado no backend.</Text>
+          <Text style={styles.status}>
+            {selectedService
+              ? `Nenhum hospital está associado a ${selectedService.name}. Cadastre as associações no banco de dados.`
+              : 'Nenhum hospital foi cadastrado no backend.'}
+          </Text>
         ) : (
           <View style={styles.cards}>
             {hospitals.map((hospital) => (
