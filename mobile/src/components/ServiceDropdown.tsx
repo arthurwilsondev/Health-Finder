@@ -8,6 +8,7 @@ export type ServiceDropdownProps = {
   onToggle: () => void;
   onSelect: (value: string) => void;
   selectedValue?: string;
+  zIndex?: number;
 };
 
 export function ServiceDropdown({
@@ -16,9 +17,10 @@ export function ServiceDropdown({
   onToggle,
   onSelect,
   selectedValue,
+  zIndex
 }: ServiceDropdownProps) {
   return (
-    <View style={styles.host}>
+    <View style={[styles.host, { zIndex, elevation: open ? 10 : 0 }]}>
       <Pressable style={styles.button} onPress={onToggle}>
         <Text style={styles.buttonText} numberOfLines={1}>
           {selectedValue || 'Buscar tipos de atendimento'}
@@ -49,7 +51,6 @@ export function ServiceDropdown({
 const styles = StyleSheet.create({
   host: {
     position: 'relative',
-    zIndex: 20,
     width: '90%',
     alignSelf: 'center',
   },

@@ -12,9 +12,29 @@ import type { Hospital, ServiceCategory } from "../types/hospital";
 
 export default function HomeScreen() {
   const [open, setOpen] = useState(false);
+  const [openDistance, setOpenDistance] = useState(false);
   const [selectedService, setSelectedService] = useState<
     ServiceCategory | undefined
   >();
+  const [selectedDistance, setSelectedDistance] = useState(3);
+  const distancias = [
+    {
+      "distancia": 3,
+      "nome": "3Km"
+    },
+    {
+      "distancia": 5,
+      "nome": "5Km"
+    },
+    {
+      "distancia": 10,
+      "nome": "10Km"
+    },
+    {
+      "distancia": 15,
+      "nome": "15Km"
+    },
+  ];
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [serviceTypes, setServiceTypes] = useState<ServiceCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,6 +126,19 @@ export default function HomeScreen() {
             );
             setOpen(false);
           }}
+          zIndex={2}
+        />
+        <Text style={styles.info}>Distancia em KM do hospital</Text>
+        <ServiceDropdown
+          open={openDistance}
+          selectedValue={`${selectedDistance.toString()}Km`}
+          options={distancias.map(e => e.nome)}
+          onToggle={() => setOpenDistance(prev => !prev)}
+          onSelect={(e) => { 
+             setSelectedDistance(Number(e.replace("Km", "")));
+             setOpenDistance(false);
+          }}
+          zIndex={1}
         />
 
         {!!categoryError && <Text style={styles.warning}>{categoryError}</Text>}

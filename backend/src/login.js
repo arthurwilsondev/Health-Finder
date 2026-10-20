@@ -65,6 +65,8 @@ export default function Login(app, db) {
   app.post("/login", async (req, res) => {
     try {
         const { email, senha } = req.body;
+        console.log("Requisição chegou aqui");
+        
 
         if (!email || !senha) {
             return res.status(400).json({
