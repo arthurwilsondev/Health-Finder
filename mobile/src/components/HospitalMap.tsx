@@ -33,7 +33,6 @@ export function HospitalMap({ hospitals }: Props) {
         longitudeDelta: 0.06,
       }
     : {
-        // Apenas enquadramento inicial da câmera; não representa um hospital fictício.
         latitude: -30.055,
         longitude: -51.183,
         latitudeDelta: 0.06,

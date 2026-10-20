@@ -7,6 +7,16 @@ type Props = {
   onPress?: () => void;
 };
 
+function formatWait(totalSeconds: number) {
+  const safeSeconds = Math.max(0, Math.round(totalSeconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+  if (hours > 0) return `${hours}h ${minutes.toString().padStart(2, '0')}min`;
+  if (minutes > 0) return `${minutes}min ${seconds.toString().padStart(2, '0')}s`;
+  return `${seconds}s`;
+}
+
 export function HospitalCard({ hospital, onPress }: Props) {
   const hasCoordinates =
     typeof hospital.latitude === 'number' &&
@@ -33,6 +43,21 @@ export function HospitalCard({ hospital, onPress }: Props) {
       <View style={styles.content}>
         <Text style={styles.name}>{hospital.name}</Text>
         <Text style={styles.detail}>{hospital.address}</Text>
+        <View style={styles.averageBox}>
+          <Text style={styles.averageLabel}>MÉDIA DE ESPERA</Text>
+          {typeof hospital.averageWaitSeconds === 'number' && hospital.recordedWaits
+            ? (
+              <>
+                <Text style={styles.averageValue}>{formatWait(hospital.averageWaitSeconds)}</Text>
+                <Text style={styles.averageCount}>
+                  {hospital.recordedWaits} {hospital.recordedWaits === 1 ? 'registro' : 'registros'}
+                </Text>
+              </>
+            )
+            : (
+              <Text style={styles.averageEmpty}>Ainda sem registros</Text>
+            )}
+        </View>
         {typeof hospital.altitude === 'number' && (
           <Text style={styles.detail}>Altitude: {hospital.altitude} m</Text>
         )}
@@ -91,6 +116,35 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontFamily,
     fontSize: 14,
+  },
+  averageBox: {
+    marginTop: 3,
+    padding: 9,
+    borderRadius: 9,
+    backgroundColor: colors.surfaceDark,
+    gap: 3,
+  },
+  averageLabel: {
+    color: colors.primarySoft,
+    fontFamily,
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  averageValue: {
+    color: colors.white,
+    fontFamily,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  averageCount: {
+    color: colors.primarySoft,
+    fontFamily,
+    fontSize: 11,
+  },
+  averageEmpty: {
+    color: colors.white,
+    fontFamily,
+    fontSize: 12,
   },
   actionHint: {
     color: colors.primarySoft,

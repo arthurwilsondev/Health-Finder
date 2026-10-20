@@ -5,6 +5,8 @@ export type Hospital = {
   altitude?: number;
   latitude?: number;
   longitude?: number;
+  averageWaitSeconds?: number;
+  recordedWaits?: number;
 };
 
 export type ServiceCategory = {

@@ -5,9 +5,15 @@ const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'
 type JsonRecord = Record<string, unknown>;
 
 let accessToken: string | null = null;
+let adminSession = false;
 
 export function setAccessToken(token: string | null) {
   accessToken = token;
+}
+
+// Só controla o que a interface mostra. A autorização de verdade é feita no backend.
+export function isAdmin(): boolean {
+  return adminSession;
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -100,6 +106,8 @@ export async function getHospitals(categoriaId?: string): Promise<Hospital[]> {
       altitude: numberValue(row.altitude),
       latitude: coordinatesAreValid ? rawLatitude : undefined,
       longitude: coordinatesAreValid ? rawLongitude : undefined,
+      averageWaitSeconds: numberValue(row.media_tempo_segundos),
+      recordedWaits: numberValue(row.quantidade_registros) ?? 0,
     };
   });
 }
@@ -136,6 +144,7 @@ export async function login(email: string, senha: string): Promise<void> {
   }
 
   setAccessToken(result.token);
+  adminSession = result.admin === true;
 }
 
 export async function registerUser(nome: string, email: string, senha: string): Promise<void> {
@@ -143,4 +152,58 @@ export async function registerUser(nome: string, email: string, senha: string): 
     method: 'POST',
     body: JSON.stringify({ nome: nome.trim(), email: email.trim(), senha }),
   });
+}
+
+export type HospitalWaitStats = {
+  averageWaitSeconds?: number;
+  recordedWaits: number;
+};
+
+export async function recordWaitTime(
+  hospitalId: string,
+  tempoSegundos: number,
+  categoriaId?: string,
+): Promise<void> {
+  const numericHospitalId = Number(hospitalId);
+  const numericCategoryId = categoriaId ? Number(categoriaId) : null;
+
+  if (!Number.isSafeInteger(numericHospitalId) || numericHospitalId < 1) {
+    throw new Error('Não foi possível identificar o hospital para salvar o tempo.');
+  }
+
+  await request('/tempos-espera', {
+    method: 'POST',
+    body: JSON.stringify({
+      hospitalId: numericHospitalId,
+      categoriaId: numericCategoryId,
+      tempoSegundos,
+    }),
+  });
+}
+
+export type NewHospital = {
+  nome: string;
+  endereco: string;
+  latitude?: number;
+  longitude?: number;
+  altitude?: number;
+};
+
+// --- Funções de administrador (o backend exige token de admin) ---
+
+export async function createHospital(hospital: NewHospital): Promise<void> {
+  await request('/hospital', {
+    method: 'POST',
+    body: JSON.stringify(hospital),
+  });
+}
+
+export async function deleteHospital(hospitalId: string): Promise<void> {
+  const numericId = Number(hospitalId);
+
+  if (!Number.isSafeInteger(numericId) || numericId < 1) {
+    throw new Error('ID de hospital inválido.');
+  }
+
+  await request(`/hospital/${numericId}`, { method: 'DELETE' });
 }

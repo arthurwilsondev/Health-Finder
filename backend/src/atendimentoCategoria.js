@@ -8,8 +8,6 @@ function normalizarColuna(value) {
 }
 
 async function obterColunasAssociacao(db) {
-    // Cria a tabela somente se ela não existir. CREATE IF NOT EXISTS não altera
-    // uma tabela antiga; por isso consultamos suas colunas antes de inserir.
     await db.query(`
         CREATE TABLE IF NOT EXISTS ${ASSOCIATION_TABLE} (
             hospital_id INT NOT NULL,

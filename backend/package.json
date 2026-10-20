@@ -20,10 +20,12 @@
     "fast-uri": "^3.1.5",
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.22.0",
-    "nodemon": "^3.1.14",
     "openai": "^6.34.0",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
     "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

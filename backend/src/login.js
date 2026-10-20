@@ -8,7 +8,7 @@ export default function Login(app, db) {
      * /login:
      *   post:
      *     summary: Autenticação de usuário
-     *     description: Valida usuário e senha e retorna um token JWT para acesso aos endpoints protegidos.
+     *     description: Valida usuário e senha e retorna um token JWT e o indicador de administrador.
      *     tags:
      *       - Autenticação
      *     requestBody:
@@ -38,6 +38,9 @@ export default function Login(app, db) {
      *                 token:
      *                   type: string
      *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+     *                 admin:
+     *                   type: boolean
+     *                   example: false
      *       401:
      *         description: Usuário ou senha inválidos.
      *         content:
@@ -93,10 +96,13 @@ export default function Login(app, db) {
             });
         }
 
+        const admin = Number(usuario.admin) === 1;
+
         const token = jwt.sign(
             {
                 id: usuario.id,
-                email: usuario.email
+                email: usuario.email,
+                admin
             },
             process.env.JWT_SECRET,
             {
@@ -107,7 +113,8 @@ export default function Login(app, db) {
 
         return res.json({
             mensagem: "Login realizado com sucesso",
-            token
+            token,
+            admin
         });
 
     } catch (error) {
