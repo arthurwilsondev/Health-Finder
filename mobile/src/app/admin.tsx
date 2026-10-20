@@ -14,14 +14,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/AppHeader';
 import { FormInput } from '../components/FormInput';
 import { colors, fontFamily } from '../constants/theme';
-import { createHospital, deleteHospital, getHospitals, isAdmin } from '../services/api';
-import type { Hospital } from '../types/hospital';
+import {
+  associateHospitalCategory,
+  createHospital,
+  deleteHospital,
+  getHospitals,
+  getServiceCategories,
+  isAdmin,
+} from '../services/api';
+import type { Hospital, ServiceCategory } from '../types/hospital';
 
 function parseOptionalNumber(value: string): number | undefined | null {
   const normalized = value.trim().replace(',', '.');
   if (!normalized) return undefined;
   const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : null; // null = inválido
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -48,7 +55,10 @@ export default function AdminScreen() {
   const [altitude, setAltitude] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Quem não é admin não deve ver esta tela (o backend também bloqueia as ações).
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [categoryError, setCategoryError] = useState('');
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+
   useEffect(() => {
     if (!allowed) router.replace('/home');
   }, [allowed]);
@@ -71,6 +81,35 @@ export default function AdminScreen() {
   useEffect(() => {
     if (allowed) void loadHospitals();
   }, [allowed, loadHospitals]);
+
+  useEffect(() => {
+    if (!allowed) return;
+    let active = true;
+
+    getServiceCategories()
+      .then((result) => {
+        if (active) setCategories(result);
+      })
+      .catch((error) => {
+        if (active) {
+          setCategoryError(
+            error instanceof Error
+              ? error.message
+              : 'Não foi possível carregar os tipos de atendimento.',
+          );
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [allowed]);
+
+  function toggleCategory(id: string) {
+    setSelectedCategoryIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    );
+  }
 
   async function handleCreate() {
     if (!nome.trim() || !endereco.trim() || !latitude.trim() || !longitude.trim() || !altitude.trim()) {
@@ -100,21 +139,45 @@ export default function AdminScreen() {
       return;
     }
 
+    if (selectedCategoryIds.length === 0) {
+      Alert.alert(
+        'Escolha os atendimentos',
+        'Selecione pelo menos um tipo de atendimento que o hospital oferece.',
+      );
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await createHospital({
+      const newHospitalId = await createHospital({
         nome: nome.trim(),
         endereco: endereco.trim(),
         latitude: lat,
         longitude: lng,
         altitude: alt,
       });
+      const results = await Promise.allSettled(
+        selectedCategoryIds.map((categoryId) =>
+          associateHospitalCategory(newHospitalId, categoryId),
+        ),
+      );
+      const failed = results.filter((result) => result.status === 'rejected').length;
+
       setNome('');
       setEndereco('');
       setLatitude('');
       setLongitude('');
       setAltitude('');
-      Alert.alert('Hospital cadastrado', 'O hospital foi adicionado com sucesso.');
+      setSelectedCategoryIds([]);
+
+      if (failed > 0) {
+        Alert.alert(
+          'Hospital cadastrado, mas com problema',
+          `O hospital foi criado, porém ${failed} tipo(s) de atendimento não puderam ser associados. Exclua o hospital e tente novamente.`,
+        );
+      } else {
+        Alert.alert('Hospital cadastrado', 'O hospital foi adicionado com sucesso.');
+      }
       await loadHospitals();
     } catch (error) {
       Alert.alert(
@@ -225,6 +288,31 @@ export default function AdminScreen() {
                 editable={!submitting}
               />
             </Field>
+            <Field label="Tipos de atendimento">
+              {categoryError ? (
+                <Text style={styles.error}>{categoryError}</Text>
+              ) : categories.length === 0 ? (
+                <Text style={styles.rowAddress}>Carregando tipos de atendimento...</Text>
+              ) : (
+                <View style={styles.chips}>
+                  {categories.map((category) => {
+                    const selected = selectedCategoryIds.includes(category.id);
+                    return (
+                      <Pressable
+                        key={category.id}
+                        disabled={submitting}
+                        onPress={() => toggleCategory(category.id)}
+                        style={[styles.chip, selected && styles.chipSelected]}
+                      >
+                        <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                          {category.name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </Field>
 
             <Pressable
               style={[styles.primaryButton, submitting && styles.disabled]}
@@ -305,6 +393,17 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   field: { gap: 6 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  chipSelected: { backgroundColor: colors.primary },
+  chipText: { color: colors.white, fontFamily, fontSize: 12, fontWeight: '800' },
+  chipTextSelected: { color: colors.textDark },
   label: {
     color: colors.primarySoft,
     fontFamily,

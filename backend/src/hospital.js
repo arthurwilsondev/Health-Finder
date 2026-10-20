@@ -30,7 +30,6 @@ function quoted(identifier) {
     return `\`${identifier.replace(/`/g, "``")}\``;
 }
 
-// Converte "" / null / undefined em null; qualquer outra coisa em Number (NaN se inválido).
 function numeroOpcional(value) {
     if (value === undefined || value === null || value === "") return null;
     return Number(value);
@@ -170,7 +169,6 @@ export default function Hospital(app, db) {
                 return res.status(404).json({ erro: `Hospital ${id} não encontrado.` });
             }
 
-            // Remove os dependentes antes, para não esbarrar em chaves estrangeiras.
             await conn.query("DELETE FROM registro_tempo_espera WHERE hospital_id = ?", [id]);
 
             try {
@@ -180,7 +178,6 @@ export default function Hospital(app, db) {
                     [id]
                 );
             } catch (error) {
-                // Se a tabela de associação ainda não existe, não há nada a limpar.
                 if (error?.code !== "ER_NO_SUCH_TABLE") throw error;
             }
 
@@ -193,7 +190,7 @@ export default function Hospital(app, db) {
             });
         } catch (error) {
             if (conn) {
-                try { await conn.rollback(); } catch { /* ignora */ }
+                try { await conn.rollback(); } catch {}
             }
             console.error("Erro ao excluir hospital:", error);
             return res.status(500).json({ erro: "Não foi possível excluir o hospital." });

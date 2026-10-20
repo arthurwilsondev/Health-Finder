@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from 'react';
 import { useLocalSearchParams, router } from 'expo-router';
 import * as Location from 'expo-location';
@@ -15,8 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/AppHeader';
 import { HospitalMap } from '../components/HospitalMap';
 import { colors, fontFamily } from '../constants/theme';
-import type { Hospital } from '../types/hospital';
-import { recordWaitTime } from '../services/api';
+import type { Hospital, ServiceCategory } from '../types/hospital';
+import { getHospitalServiceCategories, recordWaitTime } from '../services/api';
 
 const MAX_DISTANCE_KM = 3;
 
@@ -72,7 +71,6 @@ export default function TimerScreen() {
 
   const hospitalName = params.hospitalName;
   const hospitalId = params.hospitalId;
-  const categoriaId = params.categoriaId;
 
   const hospitalLatitude = Number(params.latitude);
   const hospitalLongitude = Number(params.longitude);
@@ -98,6 +96,48 @@ export default function TimerScreen() {
     'Você precisa estar próximo do hospital para iniciar.',
   );
 
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [categoryError, setCategoryError] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    params.categoriaId ? params.categoriaId : null,
+  );
+
+  useEffect(() => {
+    if (!hospitalId) {
+      setLoadingCategories(false);
+      return;
+    }
+
+    let active = true;
+
+    async function loadCategories() {
+      setLoadingCategories(true);
+      setCategoryError('');
+      try {
+        const result = await getHospitalServiceCategories(String(hospitalId));
+        if (active) setCategories(result);
+      } catch (error) {
+        if (active) {
+          setCategories([]);
+          setCategoryError(
+            error instanceof Error
+              ? error.message
+              : 'Não foi possível carregar os tipos de atendimento.',
+          );
+        }
+      } finally {
+        if (active) setLoadingCategories(false);
+      }
+    }
+
+    void loadCategories();
+
+    return () => {
+      active = false;
+    };
+  }, [hospitalId]);
+
   useEffect(() => {
     if (!running) return;
 
@@ -110,6 +150,9 @@ export default function TimerScreen() {
 
   const timer = useMemo(() => formatElapsed(elapsed), [elapsed]);
   const selectedHospital = hospitalName || 'hospital selecionado';
+  const selectedCategory = categories.find(
+    (category) => category.id === selectedCategoryId,
+  );
 
   const mapHospitals = useMemo<Hospital[]>(() => {
     if (!hospitalName || !hasValidCoordinates) return [];
@@ -148,12 +191,14 @@ export default function TimerScreen() {
         await recordWaitTime(
           hospitalId,
           elapsed,
-          categoriaId || undefined,
+          selectedCategoryId || undefined,
         );
 
         Alert.alert(
           'Tempo registrado',
-          `Tempo registrado: ${timer}.`,
+          `Tempo registrado: ${timer}${
+            selectedCategory ? ` em ${selectedCategory.name}` : ''
+          }.`,
           [{ text: 'OK', onPress: () => router.back() }],
         );
       } catch (error) {
@@ -171,6 +216,14 @@ export default function TimerScreen() {
     }
 
     if (checkingLocation) return;
+
+    if (!selectedCategoryId) {
+      Alert.alert(
+        'Escolha o atendimento',
+        'Selecione o tipo de atendimento que você vai realizar antes de iniciar o cronômetro.',
+      );
+      return;
+    }
 
     if (!hasValidCoordinates) {
       Alert.alert(
@@ -285,10 +338,48 @@ export default function TimerScreen() {
             {selectedHospital}
           </Text>
 
+          <View style={styles.categoryBox}>
+            <Text style={styles.categoryLabel}>TIPO DE ATENDIMENTO</Text>
+
+            {loadingCategories ? (
+              <Text style={styles.categoryInfo}>Carregando tipos de atendimento...</Text>
+            ) : categoryError ? (
+              <Text style={styles.categoryError}>{categoryError}</Text>
+            ) : categories.length === 0 ? (
+              <Text style={styles.categoryInfo}>
+                Este hospital ainda não tem tipos de atendimento cadastrados.
+              </Text>
+            ) : (
+              <View style={styles.chips}>
+                {categories.map((category) => {
+                  const selected = category.id === selectedCategoryId;
+                  return (
+                    <Pressable
+                      key={category.id}
+                      disabled={running || saving}
+                      onPress={() => setSelectedCategoryId(category.id)}
+                      style={[
+                        styles.chip,
+                        selected && styles.chipSelected,
+                        (running || saving) && !selected && styles.chipDisabled,
+                      ]}
+                    >
+                      <Text
+                        style={[styles.chipText, selected && styles.chipTextSelected]}
+                      >
+                        {category.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
           <Text style={styles.helper}>
             {running
               ? 'O tempo está sendo contado. Finalize quando terminar o atendimento.'
-              : 'Para iniciar, você precisa estar a até 3 km do hospital.'}
+              : 'Escolha o atendimento e esteja a até 3 km do hospital para iniciar.'}
           </Text>
 
           <View style={styles.statusBox}>
@@ -408,6 +499,70 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     textAlign: 'center',
+  },
+
+  categoryBox: {
+    width: '100%',
+    backgroundColor: colors.surfaceDark,
+    borderRadius: 10,
+    padding: 12,
+    gap: 10,
+  },
+
+  categoryLabel: {
+    color: colors.primarySoft,
+    fontFamily,
+    fontSize: 11,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+
+  categoryInfo: {
+    color: colors.white,
+    fontFamily,
+    fontSize: 13,
+    textAlign: 'center',
+  },
+
+  categoryError: {
+    color: '#FFB5B5',
+    fontFamily,
+    fontSize: 13,
+    textAlign: 'center',
+  },
+
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+  },
+
+  chip: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+
+  chipSelected: {
+    backgroundColor: colors.primary,
+  },
+
+  chipDisabled: {
+    opacity: 0.4,
+  },
+
+  chipText: {
+    color: colors.white,
+    fontFamily,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+
+  chipTextSelected: {
+    color: colors.textDark,
   },
 
   helper: {

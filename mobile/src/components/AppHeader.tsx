@@ -11,7 +11,6 @@ type Props = {
 
 export function AppHeader({ showHome = true }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
-  // O menu só existe para administradores; para os demais a engrenagem não faz nada.
   const admin = isAdmin();
 
   return (

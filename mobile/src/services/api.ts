@@ -11,7 +11,6 @@ export function setAccessToken(token: string | null) {
   accessToken = token;
 }
 
-// Só controla o que a interface mostra. A autorização de verdade é feita no backend.
 export function isAdmin(): boolean {
   return adminSession;
 }
@@ -189,12 +188,29 @@ export type NewHospital = {
   altitude?: number;
 };
 
-// --- Funções de administrador (o backend exige token de admin) ---
-
-export async function createHospital(hospital: NewHospital): Promise<void> {
-  await request('/hospital', {
+export async function createHospital(hospital: NewHospital): Promise<string> {
+  const result = await request<JsonRecord>('/hospital', {
     method: 'POST',
     body: JSON.stringify(hospital),
+  });
+
+  const id = numberValue(result.idHospital);
+  if (id === undefined) {
+    throw new Error('O backend não retornou o ID do hospital cadastrado.');
+  }
+  return String(id);
+}
+
+export async function associateHospitalCategory(
+  hospitalId: string,
+  categoriaId: string,
+): Promise<void> {
+  await request('/hospitalAtendimentoCategoria', {
+    method: 'POST',
+    body: JSON.stringify({
+      hospitalId: Number(hospitalId),
+      categoriaId: Number(categoriaId),
+    }),
   });
 }
 
@@ -206,4 +222,19 @@ export async function deleteHospital(hospitalId: string): Promise<void> {
   }
 
   await request(`/hospital/${numericId}`, { method: 'DELETE' });
+}
+
+export async function getHospitalServiceCategories(
+  hospitalId: string,
+): Promise<ServiceCategory[]> {
+  const categories = await getServiceCategories();
+
+  const matches = await Promise.all(
+    categories.map(async (category) => {
+      const hospitals = await getHospitals(category.id);
+      return hospitals.some((hospital) => hospital.id === hospitalId) ? category : null;
+    }),
+  );
+
+  return matches.filter((category): category is ServiceCategory => category !== null);
 }

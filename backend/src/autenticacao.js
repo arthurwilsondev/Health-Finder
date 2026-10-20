@@ -41,7 +41,6 @@ export default function autenticarToken(req, res, next) {
     }
 }
 
-// deve ser usado DEPOIS de autenticarToken O claim "admin" vem do JWT assinado no login entao o cliente nao consegue forjar
 export function autenticarAdmin(req, res, next) {
     if (req.usuario?.admin !== true) {
         return res.status(403).json({
