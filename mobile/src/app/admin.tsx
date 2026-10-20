@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -21,7 +21,16 @@ function parseOptionalNumber(value: string): number | undefined | null {
   const normalized = value.trim().replace(',', '.');
   if (!normalized) return undefined;
   const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : null
+  return Number.isFinite(parsed) ? parsed : null; // null = inválido
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{label}</Text>
+      {children}
+    </View>
+  );
 }
 
 export default function AdminScreen() {
@@ -39,8 +48,7 @@ export default function AdminScreen() {
   const [altitude, setAltitude] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // quem nao e admin nao deve ver esta tela o backend tambem bloqueia as açoes
-  
+  // Quem não é admin não deve ver esta tela (o backend também bloqueia as ações).
   useEffect(() => {
     if (!allowed) router.replace('/home');
   }, [allowed]);
@@ -65,8 +73,11 @@ export default function AdminScreen() {
   }, [allowed, loadHospitals]);
 
   async function handleCreate() {
-    if (!nome.trim() || !endereco.trim()) {
-      Alert.alert('Campos obrigatórios', 'Informe o nome e o endereço do hospital.');
+    if (!nome.trim() || !endereco.trim() || !latitude.trim() || !longitude.trim() || !altitude.trim()) {
+      Alert.alert(
+        'Campos obrigatórios',
+        'Preencha nome, endereço, latitude, longitude e altitude.',
+      );
       return;
     }
 
@@ -74,22 +85,14 @@ export default function AdminScreen() {
     const lng = parseOptionalNumber(longitude);
     const alt = parseOptionalNumber(altitude);
 
-    if (lat === null || lng === null || alt === null) {
-      Alert.alert('Valor inválido', 'Latitude, longitude e altitude devem ser números.');
-      return;
-    }
-    if ((lat === undefined) !== (lng === undefined)) {
+    if (lat == null || lng == null || alt == null) {
       Alert.alert(
-        'Coordenadas incompletas',
-        'Informe latitude e longitude juntas, ou deixe as duas em branco.',
+        'Valor inválido',
+        'Latitude, longitude e altitude devem ser números. Use ponto como separador decimal.',
       );
       return;
     }
-    if (
-      lat !== undefined &&
-      lng !== undefined &&
-      (lat < -90 || lat > 90 || lng < -180 || lng > 180)
-    ) {
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
       Alert.alert(
         'Coordenadas inválidas',
         'A latitude deve estar entre -90 e 90 e a longitude entre -180 e 180.',
@@ -172,46 +175,56 @@ export default function AdminScreen() {
 
           <View style={styles.panel}>
             <Text style={styles.sectionTitle}>Adicionar hospital</Text>
-            <FormInput
-              placeholder="Nome"
-              value={nome}
-              onChangeText={setNome}
-              autoCapitalize="words"
-              editable={!submitting}
-            />
-            <FormInput
-              placeholder="Endereço"
-              value={endereco}
-              onChangeText={setEndereco}
-              editable={!submitting}
-            />
-            <FormInput
-              placeholder="Latitude (opcional, ex.: -30.0550)"
-              value={latitude}
-              onChangeText={setLatitude}
-              keyboardType="numbers-and-punctuation"
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!submitting}
-            />
-            <FormInput
-              placeholder="Longitude (opcional, ex.: -51.1758)"
-              value={longitude}
-              onChangeText={setLongitude}
-              keyboardType="numbers-and-punctuation"
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!submitting}
-            />
-            <FormInput
-              placeholder="Altitude em metros (opcional)"
-              value={altitude}
-              onChangeText={setAltitude}
-              keyboardType="numbers-and-punctuation"
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!submitting}
-            />
+            <Field label="Nome">
+              <FormInput
+                placeholder="Nome do hospital"
+                value={nome}
+                onChangeText={setNome}
+                autoCapitalize="words"
+                editable={!submitting}
+              />
+            </Field>
+            <Field label="Endereço">
+              <FormInput
+                placeholder="Rua, número, bairro"
+                value={endereco}
+                onChangeText={setEndereco}
+                editable={!submitting}
+              />
+            </Field>
+            <Field label="Latitude">
+              <FormInput
+                placeholder="-30.0550"
+                value={latitude}
+                onChangeText={setLatitude}
+                keyboardType="numbers-and-punctuation"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!submitting}
+              />
+            </Field>
+            <Field label="Longitude">
+              <FormInput
+                placeholder="-51.1758"
+                value={longitude}
+                onChangeText={setLongitude}
+                keyboardType="numbers-and-punctuation"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!submitting}
+              />
+            </Field>
+            <Field label="Altitude (metros)">
+              <FormInput
+                placeholder="10"
+                value={altitude}
+                onChangeText={setAltitude}
+                keyboardType="numbers-and-punctuation"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!submitting}
+              />
+            </Field>
 
             <Pressable
               style={[styles.primaryButton, submitting && styles.disabled]}
@@ -290,6 +303,13 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 22,
     gap: 14,
+  },
+  field: { gap: 6 },
+  label: {
+    color: colors.primarySoft,
+    fontFamily,
+    fontSize: 12,
+    fontWeight: '800',
   },
   sectionTitle: {
     color: colors.white,

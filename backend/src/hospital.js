@@ -30,6 +30,7 @@ function quoted(identifier) {
     return `\`${identifier.replace(/`/g, "``")}\``;
 }
 
+// Converte "" / null / undefined em null; qualquer outra coisa em Number (NaN se inválido).
 function numeroOpcional(value) {
     if (value === undefined || value === null || value === "") return null;
     return Number(value);
@@ -53,7 +54,7 @@ export default function Hospital(app, db) {
      *         application/json:
      *           schema:
      *             type: object
-     *             required: [nome, endereco]
+     *             required: [nome, endereco, latitude, longitude, altitude]
      *             properties:
      *               nome:
      *                 type: string
@@ -89,19 +90,18 @@ export default function Hospital(app, db) {
             const longitude = numeroOpcional(req.body?.longitude);
             const altitude = numeroOpcional(req.body?.altitude);
 
-            if ((latitude === null) !== (longitude === null)) {
+            if (latitude === null || longitude === null || altitude === null) {
                 return res.status(400).json({
-                    erro: "Informe latitude e longitude juntas, ou deixe as duas em branco."
+                    erro: "Latitude, longitude e altitude são obrigatórias."
                 });
             }
-            if (latitude !== null &&
-                (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
-                 !Number.isFinite(longitude) || longitude < -180 || longitude > 180)) {
+            if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
+                !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
                 return res.status(400).json({
                     erro: "Informe latitude entre -90 e 90 e longitude entre -180 e 180."
                 });
             }
-            if (altitude !== null && !Number.isFinite(altitude)) {
+            if (!Number.isFinite(altitude)) {
                 return res.status(400).json({ erro: "A altitude deve ser um número." });
             }
 
@@ -282,6 +282,8 @@ export default function Hospital(app, db) {
         }
     });
 
+    // Lista hospitais com médias calculadas a partir dos tempos enviados pelo app.
+    // Sem categoria: média geral do hospital. Com categoriaId: média daquele tipo.
     router.get("/hospital", async (req, res) => {
         try {
             const categoriaQuery = req.query.categoriaId;
