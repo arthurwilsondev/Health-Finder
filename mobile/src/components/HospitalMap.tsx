@@ -2,9 +2,13 @@ import { StyleSheet, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { colors } from '../constants/theme';
 import type { Hospital } from '../types/hospital';
+import * as Location from 'expo-location';
+import { calculateDistanceKm } from '../app/timer';
+import { useEffect, useState } from 'react';
 
 type Props = {
   hospitals: Hospital[];
+  distance?: number;
 };
 
 const darkMapStyle = [
@@ -17,7 +21,7 @@ const darkMapStyle = [
   { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#193148' }] },
 ];
 
-export function HospitalMap({ hospitals }: Props) {
+export function HospitalMap({ hospitals, distance }: Props) {
   const mappedHospitals = hospitals.filter(
     (hospital) =>
       typeof hospital.latitude === 'number' &&
@@ -27,17 +31,84 @@ export function HospitalMap({ hospitals }: Props) {
   const firstHospital = mappedHospitals[0];
   const initialRegion = firstHospital
     ? {
-        latitude: firstHospital.latitude!,
-        longitude: firstHospital.longitude!,
-        latitudeDelta: 0.06,
-        longitudeDelta: 0.06,
-      }
+      latitude: firstHospital.latitude!,
+      longitude: firstHospital.longitude!,
+      latitudeDelta: 0.06,
+      longitudeDelta: 0.06,
+    }
     : {
-        latitude: -30.055,
-        longitude: -51.183,
-        latitudeDelta: 0.06,
-        longitudeDelta: 0.06,
-      };
+      latitude: -30.055,
+      longitude: -51.183,
+      latitudeDelta: 0.06,
+      longitudeDelta: 0.06,
+    };
+
+
+  // Dentro do componente HospitalMap:
+  const [hospitaisFiltrados, setHospitaisFiltrados] =
+    useState<Hospital[]>([]);
+
+  useEffect(() => {
+    let ativo = true;
+
+    async function filtrarHospitais() {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+
+        if (status !== 'granted') {
+          setHospitaisFiltrados([]);
+          return;
+        }
+
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+
+        const hospitaisValidos = hospitals.filter(
+          (hospital) =>
+            typeof hospital.latitude === 'number' &&
+            typeof hospital.longitude === 'number'
+        );
+
+        const resultados = hospitaisValidos.map((hospital) => {
+          const distanciaHospital = calculateDistanceKm(
+            position.coords.latitude,
+            position.coords.longitude,
+            hospital.latitude!,
+            hospital.longitude!
+          );
+
+          return {
+            hospital,
+            distancia: distanciaHospital,
+          };
+        });
+
+        const filtrados = resultados
+          .filter(({ distancia }) => distancia <= (distance ?? 0))
+          .map(({ hospital }) => hospital);
+
+        if (ativo) {
+          setHospitaisFiltrados(filtrados);
+        }
+      } catch (error) {
+        console.error('Erro ao filtrar hospitais:', error);
+
+        if (ativo) {
+          setHospitaisFiltrados([]);
+        }
+      }
+    }
+
+    filtrarHospitais();
+
+    return () => {
+      ativo = false;
+    };
+  }, [hospitals, distance]);
+
+  console.log(distance);
+  
 
   return (
     <View style={styles.wrapper}>
@@ -52,7 +123,7 @@ export function HospitalMap({ hospitals }: Props) {
         zoomEnabled
         pitchEnabled={false}
       >
-        {mappedHospitals.map((hospital) => (
+        {hospitaisFiltrados.map((hospital) => (
           <Marker
             key={hospital.id}
             coordinate={{

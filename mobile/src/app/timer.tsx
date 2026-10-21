@@ -39,7 +39,7 @@ function formatElapsed(totalSeconds: number) {
   return `${minutes}:${seconds}`;
 }
 
-function calculateDistanceKm(
+export function calculateDistanceKm(
   lat1: number,
   lon1: number,
   lat2: number,

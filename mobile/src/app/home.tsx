@@ -9,6 +9,8 @@ import { ServiceDropdown } from "../components/ServiceDropdown";
 import { colors, fontFamily } from "../constants/theme";
 import { getHospitals, getServiceCategories } from "../services/api";
 import type { Hospital, ServiceCategory } from "../types/hospital";
+import { calculateDistanceKm } from "./timer";
+import * as Location from 'expo-location';
 
 export default function HomeScreen() {
   const [open, setOpen] = useState(false);
@@ -41,6 +43,70 @@ export default function HomeScreen() {
   const [hospitalError, setHospitalError] = useState("");
   const [categoryError, setCategoryError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+
+
+  // Dentro do componente HospitalMap:
+  const [hospitaisFiltrados, setHospitaisFiltrados] =
+    useState<Hospital[]>([]);
+
+  useEffect(() => {
+    let ativo = true;
+
+    async function filtrarHospitais() {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+
+        if (status !== 'granted') {
+          setHospitaisFiltrados([]);
+          return;
+        }
+
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+
+        const hospitaisValidos = hospitals.filter(
+          (hospital) =>
+            typeof hospital.latitude === 'number' &&
+            typeof hospital.longitude === 'number'
+        );
+
+        const resultados = hospitaisValidos.map((hospital) => {
+          const distanciaHospital = calculateDistanceKm(
+            position.coords.latitude,
+            position.coords.longitude,
+            hospital.latitude!,
+            hospital.longitude!
+          );
+
+          return {
+            hospital,
+            distancia: distanciaHospital,
+          };
+        });
+
+        const filtrados = resultados
+          .filter(({ distancia }) => distancia <= selectedDistance)
+          .map(({ hospital }) => hospital);
+
+        if (ativo) {
+          setHospitaisFiltrados(filtrados);
+        }
+      } catch (error) {
+        console.error('Erro ao filtrar hospitais:', error);
+
+        if (ativo) {
+          setHospitaisFiltrados([]);
+        }
+      }
+    }
+
+    filtrarHospitais();
+
+    return () => {
+      ativo = false;
+    };
+  }, [hospitals, selectedDistance]);
 
   useFocusEffect(
     useCallback(() => {
@@ -93,7 +159,9 @@ export default function HomeScreen() {
     return () => {
       active = false;
     };
-  }, [reloadKey, selectedService?.id]);
+  }, [reloadKey, selectedService?.id, selectedDistance]);
+
+
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -134,12 +202,13 @@ export default function HomeScreen() {
           selectedValue={`${selectedDistance.toString()}Km`}
           options={distancias.map(e => e.nome)}
           onToggle={() => setOpenDistance(prev => !prev)}
-          onSelect={(e) => { 
-             setSelectedDistance(Number(e.replace("Km", "")));
-             setOpenDistance(false);
+          onSelect={(e) => {
+            setSelectedDistance(Number(e.replace("Km", "")));
+            setOpenDistance(false);
           }}
           zIndex={1}
         />
+
 
         {!!categoryError && <Text style={styles.warning}>{categoryError}</Text>}
 
@@ -155,7 +224,7 @@ export default function HomeScreen() {
         )}
 
         <View style={styles.mapWrap}>
-          <HospitalMap hospitals={hospitals} />
+          <HospitalMap distance={selectedDistance} hospitals={hospitals} />
         </View>
 
         {loading ? (
@@ -178,7 +247,7 @@ export default function HomeScreen() {
           </Text>
         ) : (
           <View style={styles.cards}>
-            {hospitals.map((hospital) => (
+            {hospitaisFiltrados .map((hospital) => (
               <HospitalCard
                 key={hospital.id}
                 hospital={hospital}
